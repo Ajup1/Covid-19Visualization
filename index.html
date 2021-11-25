@@ -1,0 +1,557 @@
+<!doctype html>
+<title>Parallel Coordinates</title>
+<link rel="stylesheet" href="examples/lib/slickgrid/slick.grid.css" type="text/css" />
+<link rel="stylesheet" href="examples/lib/slickgrid/jquery-ui-1.8.16.custom.css" type="text/css" />
+<link rel="stylesheet" href="examples/lib/slickgrid/examples.css" type="text/css" />
+<link rel="stylesheet" href="examples/lib/slickgrid/slick.pager.css" type="text/css" />
+<script src="examples/lib/slickgrid/jquery-1.7.min.js"></script>
+<script src="examples/lib/slickgrid/jquery-1.7.min.js"></script>
+<script src="examples/lib/slickgrid/jquery.event.drag-2.0.min.js"></script>
+<script src="examples/lib/slickgrid/slick.core.js"></script>
+<script src="examples/lib/slickgrid/slick.grid.js"></script>
+<script src="examples/lib/slickgrid/slick.pager.js"></script>
+<script src="examples/lib/slickgrid/slick.dataview.js"></script>
+<!-- End SlickGrid -->
+<link rel="stylesheet" type="text/css" href="CSS/d3.parcoords.css">
+<link rel="stylesheet" type="text/css" href="CSS/style.css">
+<!-- <script src="https://d3js.org/d3.v3.min.js"></script><script src="https://d3js.org/d3.v4.min.js"></script> -->
+<script src="JS/d3.min.js"></script>
+<script src="JS/d3.parcoords.js"></script>
+<script src="examples/lib/divgrid.js"></script>
+<h1>Covid-19 <small>Parallel Coordinates Plot</small>
+</h1>
+<p style="color: #a00;"></p>
+<style>
+  body,
+  html {
+    margin: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    font-size: 10px;
+    font-family: "Big Caslon";
+  }
+
+  #grid,
+  #pager {
+    position: fixed;
+    width: 100%;
+  }
+
+  #grid {
+    bottom: 0;
+    height: 123px;
+    padding-left: 3px;
+  }
+
+  /*#pager {
+      bottom: 106px;
+      height: 20px;
+    }*/
+  .slick-row:hover {
+    font-weight: bold;
+    color: #069;
+  }
+
+  .axis text {
+    font-family: Arial;
+    font-size: 12px;
+  }
+
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+  }
+
+  .dot {
+    stroke: none;
+  }
+
+  .tooltip {
+    position: absolute;
+    font-size: 12px;
+    width: auto;
+    height: auto;
+    pointer-events: none;
+    background-color: white;
+  }
+
+  .axis {
+    opacity: 9.9;
+  }
+
+  .axis:hover {
+    opacity: 1;
+  }
+</style>
+<body>
+  <button id="reset" style="display: none;" onclick="reset_axis();">Reset</button>
+  <script src="JS/d3.min.js"></script>
+  <script src="JS/d3.parcoords.js"></script>
+  <link rel="stylesheet" type="text/css" href="css/d3.parcoords.css">
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="JS/d3.parcoords.js"></script>
+  <script src="examples/lib/divgrid.js"></script>
+  <!--//send value to next page-->
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+  <h2>-Drag around axis to begin brush. -Double Click on label to rotate axis. -Click on country alpbhabet to see the country names in next axis-Click on Month axis to see dates in seperate axis -Drag any two axis to create compare plot and create scatter plot</h2>
+  <input type="file" id="uploader" value="">
+  <!--   <button id="hide-ticks">Hide Ticks</button><button id="show-ticks">Show Ticks</button> -->
+  <button title="Zoom in on selected data" id="keep-data" onclick="keep_selected_data()">Rescale Axis</button>
+  <input type="button" id="keep_scatter_data" value="Compare Plot" onclick="compare_plot();" />
+  <input type="button" id="highlightspecific_data" value=" Highlight" onclick="highlightSpecific();" />
+  <script>
+    var dimensions = {};
+
+    function reset_axis() {
+      console.log("Reset");
+      parcoords.updateAxes();
+      parcoords.brushReset();
+      return parcoords;
+    }
+
+    function showGridTableFunction() {
+      var x = document.getElementById("grid");
+      if (x.style.display === "none") {
+        x.style.display = "block";
+        document.getElementById("showGridTable").value = "Hide Grid";
+      } else {
+        x.style.display = "none";
+        document.getElementById("showGridTable").value = "Show Grid";
+      } //document.getElementById("showGridTable").style.display = "hidden"; } 
+  </script>
+  <label for="sltBrushMode">Brush mode:</label>
+  <select id="sltBrushMode"></select>
+  <label id="lblPredicate" for="sltPredicate">Predicate:</label>
+  <select id="sltPredicate">
+    <option>AND</option>
+    <option>OR</option>
+  </select>
+  <script type="text/javascript"></script>
+  <!-- //For Removing the axis  -->
+  <select name="list" value="alllist" id="select_list"></select>
+  <input type="button" id="removeAxisQuery" value="Remove Tick" onclick="myFunction();" />
+  <input type="button" id="hideAxisQuery" value="Hide Axis" onclick="hideAxisFuction();" />
+  <input type="button" id="showGridTable" value="Show Grid" onclick="showGridTableFunction();" style="display: true;" />
+  <!-- <select id="colorplot"onchange="schedulecolor.call(this, event)"><option>Location</option><option>Date</option><option>Country</option><option>Continent</option></select> -->
+  <div id="vis-container">
+    <h1 id="demo" align="center" font-size="17px"></h1>
+  </div>
+  <script>
+    //Remove Entire Axis
+    function myFunction(data) {
+      var ddl = document.getElementById("select_list");
+      var selectedValue = ddl.options[ddl.selectedIndex].value;
+      // console.log("this",selectedValue)
+      if (selectedValue != " ") {
+        //console.log("Hide Axis",selectedValue);
+        d3.selectAll(".dimension").filter(function(d) {
+          return d == selectedValue;
+        }).selectAll(".tick text").remove();
+      }
+    };
+
+    function showGridTableFunction() {
+      var x = document.getElementById("grid");
+      if (x.style.display === "none") {
+        x.style.display = "block";
+        document.getElementById("showGridTable").value = "Hide Grid";
+      } else {
+        x.style.display = "none";
+        document.getElementById("showGridTable").value = "Show Grid";
+      }
+      //document.getElementById("showGridTable").style.display = "hidden";
+    }
+
+    function hideAxisFuction(data) {
+      var ddl = document.getElementById("select_list");
+      var selectedValue = ddl.options[ddl.selectedIndex].value;
+      parcoords.svg.selectAll(".dimension").filter(function(d) {
+        return d == selectedValue;
+      }).remove();
+    }
+  </script>
+  <div id="example" class="parcoords">
+    <div id="grid" style="display: none;"></div>
+    <div id="pager"></div>
+    <script>
+      var margin = {
+          top: 30,
+          right: 20,
+          bottom: 30,
+          left: 50
+        },
+        width = 600 - margin.left - margin.right,
+        height = 270 - margin.top - margin.bottom;
+      var headers;
+      var rows;
+      var data;
+      var contents;
+      var filterdFlag = false;
+      var clicked_country;
+      var parcoords = d3.parcoords()("#example").alpha(0.4).mode("queue") // progressive rendering
+        .height(d3.max([document.body.clientHeight - 190, 200])).margin({
+          top: 20,
+          left: 0,
+          right: 0,
+          bottom: 89
+        });
+      var color = d3.scale.ordinal().range(["#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#46f0f0", "#f032e6", "#d2f53c", "#fabebe", "#008080", "#e6beff", "#aa6e28", "#fffac8", "#800000", "#aaffc3", "#808000", "#ffd8b1", "#000080", "#808080", "#ffffff", "#000000"].reverse());
+      // add instruction text
+      var instructions = "-Drag around axis to begin brush. -Click axis to clear brush. -Click a label to color data based on axis values. -Hover on each line to highlight."
+      // create chart from loaded data
+      function parallelCoordinates(data, countryName, Date) {
+        // slickgrid needs each data element to have an i
+        data.forEach(function(d, i) {
+          d.id = d.id || i;
+        });
+        var hiddenAxes;
+        if (countryName) {
+          hiddenAxes = ["CountryName", "continent", "id", "USA State", "Total vaccinations", "iso_code", "stringency_index", 'total_cases_per_million', "new_cases_per_million", "new_cases_smoothed_per_million", "new_deaths_smoothed_per_million", "reproduction_rate", "icu_patients", "icu_patients_per_million", "New vaccinations"]
+          parcoords.data(data).hideAxis(hiddenAxes).render().composite("darken").reorderable().brushMode("1D-axes").color(function(d) {
+            //specific color to some country
+            if (d.Location == 'United States') return "blue";
+            if (d.Location == 'USA') return "blue";
+            if (d.Location == 'India') return "red";
+            if (d.Location == 'Italy') return "Green";
+            if (d.Location == 'China') return "maroon";
+            if (d.Location == 'Brazil') return "purple";
+            else {
+              return color(d.Location);
+            }
+          });
+        } else {
+          // hiddenAxes = ["Date","Location","continent"]
+          hiddenAxes = ["continent", "Location", "id", "Total vaccinations", "USA State", "Date", "iso_code", "stringency_index", 'total_cases_per_million', "New vaccinations"]
+          parcoords.data(data).hideAxis(hiddenAxes).render().composite("darken").reorderable().brushMode("1D-axes").color(function(d) {
+            if (d.Country == 'A') return "yellow";
+            if (d.Country == 'B') return "purple";
+            if (d.Country == 'C') return "green";
+            if (d.Country == 'G') return "pink";
+            if (d.Country == 'H') return "orange";
+            if (d.Country == 'I') return "red";
+            if (d.Country == 'U') return "blue";
+            if (d.Country == 'T') return "lime";
+            else return color(d.Country);
+            //return "orange";
+          });
+          //Removeaxisfunction is selected with month axis onclick function Click a month,then hide the location on first plot
+          function removeaxisFunction(data, countryName) {
+            var hiddenAxes;
+            if (countryName) {
+              hiddenAxes = ["Location", "continent"]
+              parcoords.data(data).hideAxis(hiddenAxes).render().composite("darken").reorderable().brushMode("1D-axes").color(function(d) {
+                if (d.Location == 'USA') return "blue";
+                if (d.Location == 'India') return "red";
+                if (d.Location == 'Italy') return "Green";
+                if (d.Location == 'China') return "maroon";
+                if (d.Location == 'Brazil') return "purple";
+                else {
+                  return color(d.Location);
+                }
+              });
+            } else {
+              // hiddenAxes = ["Date","Location","continent"]
+              hiddenAxes = ["Location", "continent"]
+              parcoords.data(data).hideAxis(hiddenAxes).render().composite("darken").reorderable().brushMode("1D-axes").color(function(d) {
+                if (d.Country == 'A') return "yellow";
+                if (d.Country == 'B') return "purple";
+                if (d.Country == 'C') return "green";
+                if (d.Country == 'G') return "pink";
+                if (d.Country == 'H') return "orange";
+                if (d.Country == 'I') return "red";
+                if (d.Country == 'U') return "blue";
+                if (d.Country == 'T') return "lime";
+                else return color(d.Country);
+              })
+            };
+            //For 2D Brush
+            var sltBrushMode = d3.select('#sltBrushMode')
+            sltBrushMode.selectAll('option').data(parcoords.brushModes()).enter().append('option').text(function(d) {
+              return d;
+            });
+            sltBrushMode.on('change', function() {
+              parcoords.brushMode(this.value);
+              switch (this.value) {
+                case '2D-strums':
+                  d3.select("#pStrums").style("visibility", "visible");
+                  break;
+              }
+            });
+            sltBrushMode.property('value', '1D-axes');
+            d3.select('#btnReset').on('click', function() {
+              parcoords.brushReset();
+            })
+            d3.select('#sltPredicate').on('change', function() {
+              parcoords.brushPredicate(this.value);
+            });
+          }
+          //date in ascending by YYYY-''
+          //regex = "^[0-3]?[0-9]/[0-3]?[0-9]/(?:[0-9]{2})?[0-9]{2}$";
+          var dateParse = d3.format("MM").parse;
+          d3.descending(dateParse);
+          // setting up grid
+          var column_keys = d3.keys(data[0]);
+          var columns = column_keys.map(function(key, i) {
+            return {
+              id: key,
+              name: key,
+              field: key,
+              sortable: true
+            }
+          });
+          var options = {
+            enableCellNavigation: true,
+            enableColumnReorder: false,
+            multiColumnSort: false
+          };
+          var dataView = new Slick.Data.DataView();
+          var grid = new Slick.Grid("#grid", dataView, columns, options);
+          //var pager = new Slick.Controls.Pager(dataView, grid, $("#pager"));
+          // wire up model events to drive the grid
+          dataView.onRowCountChanged.subscribe(function(e, args) {
+            grid.updateRowCount();
+            grid.render();
+          });
+          dataView.onRowsChanged.subscribe(function(e, args) {
+            grid.invalidateRows(args.rows);
+            grid.render();
+          });
+          // column sorting
+          var sortcol = column_keys[0];
+          var sortdir = 1;
+
+          function comparer(a, b) {
+            var x = a[sortcol],
+              y = b[sortcol];
+            return (x == y ? 0 : (x > y ? 1 : -1));
+          }
+          // click header to sort grid column
+          grid.onSort.subscribe(function(e, args) {
+            sortdir = args.sortAsc ? 1 : -1;
+            sortcol = args.sortCol.field;
+            if ($.browser.msie && $.browser.version <= 8) {
+              dataView.fastSort(sortcol, args.sortAsc);
+            } else {
+              dataView.sort(comparer, args.sortAsc);
+            }
+          });
+          // highlight row in chart
+          grid.onMouseEnter.subscribe(function(e, args) {
+            var i = grid.getCellFromEvent(e).row;
+            var d = parcoords.brushed() || data;
+            parcoords.highlight([d[i]]);
+          });
+          grid.onMouseLeave.subscribe(function(e, args) {
+            parcoords.unhighlight();
+          });
+          // fill grid with data
+          gridUpdate(data);
+          // update grid on brush
+          parcoords.on("brush", function(d) {
+            gridUpdate(d);
+          });
+
+          function gridUpdate(data) {
+            dataView.beginUpdate();
+            dataView.setItems(data);
+            dataView.endUpdate();
+          };
+          // Reset
+          document.getElementById("reset").addEventListener("click", handleResetClicked)
+          //For Country axis to have different font
+          allTicks = document.querySelectorAll(".tick text");
+          for (var i = 0, max = allTicks.length; i < max; i++) {
+            allTicks[i].addEventListener("click", onClickTick);
+            const innerLabel = allTicks[i].innerHTML;
+            if ((/[a-zA-Z]/).test(innerLabel) && innerLabel.length == 1) {
+              allTicks[i].style.fontSize = "20px";
+              allTicks[i].style.fontFamily = '"Lucida Console", "Courier New", monospace';
+            }
+            //for arranging the Month axis value on right side
+            if ((/^\d{4}-\d{2}/).test(innerLabel)) {
+              allTicks[i].style.fontSize = "15px";
+              allTicks[i].style.textAnchor = "start";
+              allTicks[i].style.fontFamily = '"Lucida Console", "Courier New", monospace';
+            }
+            if ((/^\d{4}-\d{2}-\d{2}/).test(innerLabel)) {
+              allTicks[i].style.fontSize = "13px";
+              allTicks[i].style.textAnchor = "start";
+              allTicks[i].style.fontFamily = '"Lucida Console", "Courier New", monospace';
+            }
+          }
+        }
+
+        function handleResetClicked() {
+          resetSelectedCountryAlphabet()
+          clicked_country = null
+        }
+
+        function resetSelectedCountryAlphabet() {
+          if (filterdFlag) {
+            data = d3.csv.parse(contents);
+            parallelCoordinates(data, false);
+            parcoords.updateAxes();
+            filterdFlag = false;
+            document.getElementById("reset").style.display = "hidden";
+          }
+        }
+
+        function resetSelectedDate() {
+          if (filterdFlag) {
+            data = d3.csv.parse(contents);
+            parallelCoordinates(data, false);
+            parcoords.updateAxes();
+            filterdFlag = false;
+            document.getElementById("reset").style.display = "hidden";
+          }
+        }
+        // Click function generate a derived axis. Parallel coordinate hiddenaxis function with true, false statement
+        function onClickTick() {
+          resetSelectedCountryAlphabet();
+          // console.log("This is the one clicked:", this.innerHTML, (/[\W\S_]/).test(this.innerHTML));
+          const innerLabel = this.innerHTML;
+          if ((/[\W\S_]/).test(innerLabel) && innerLabel.length == 1) {
+            data = d3.csv.parse(contents);
+            dataToFilter = data;
+            console.log("Filtered Data", dataToFilter.filter(d => d.Country === innerLabel));
+            parallelCoordinates(dataToFilter.filter(d => d.Country === innerLabel), true);
+            //  parcoords.reset(d => d.CountryName);
+            parcoords.updateAxes();
+            document.getElementById("reset").style.display = "block";
+            document.getElementById("reset").addEventListener("click", resetSelectedCountryAlphabet)
+            allTicks = document.querySelectorAll(".tick text");
+            for (var i = 0, max = allTicks.length; i < max; i++) {
+              allTicks[i].addEventListener("click", onClickTick);
+            }
+            clicked_country = innerLabel;
+          }
+          //console.log("clicked", clicked_country);
+          //if(clicked_country && !!innerLabel && innerLabel.split("-").length >= 2 && innerLabel.split("-")[0].length == 3 && innerLabel.split("-")[1].length == 4) {
+          if ((/[\W\S_]/).test(innerLabel) && innerLabel.split("-")[0].length == 4 && innerLabel.split("-").length >= 2) {
+            console.log("clicked on date", innerLabel);
+            data = d3.csv.parse(contents);
+            dataToFilter = data;
+            if ((/^\d{4}-\d{2}-\d{2}/).test(innerLabel)) {
+              allTicks[i].style.fontSize = "11px";
+              allTicks[i].style.textAnchor = "start";
+              allTicks[i].style.fontFamily = '"Lucida Console", "Courier New", monospace';
+            }
+            //  console.log("Filtered Data", dataToFilter.filter(d => d.A_Date === innerLabel));
+            if (clicked_country && !!innerLabel && innerLabel.split("-")[0].length == 4 && innerLabel.split("-")[1].length == 2) {
+              const country_filtered = dataToFilter.filter(d => d.Country === clicked_country) || [];
+              parallelCoordinates(country_filtered.filter(d => d.Month === innerLabel), true);
+              parcoords.updateAxes();
+            } else {
+              console.log("Filtered Data", dataToFilter.filter(d => d.Month === innerLabel));
+              const country_filtered1 = dataToFilter || [];
+              parallelCoordinates(country_filtered1.filter(d => d.Month === innerLabel), false);
+              // parallelCoordinates(country_filtered1.remove(d => d.Location), true);
+              parcoords.updateAxes();
+            }
+            //on click evvent
+            document.getElementById("reset").style.display = "block";
+            document.getElementById("reset").addEventListener("click", resetSelectedDate)
+            allTicks = document.querySelectorAll(".tick text");
+            for (var i = 0, max = allTicks.length; i < max; i++) {
+              allTicks[i].addEventListener("click", onClickTick);
+            }
+          }
+          filterdFlag = true;
+          console.log(document.getElementById("reset"));
+          document.getElementById("reset").style.display = "block";
+        }
+      };
+      // CSV Uploader
+      var uploader = document.getElementById("uploader");
+      var reader = new FileReader();
+      //console.log(reader, "File");
+      // reader.readAsText(document.getElementById("uploader").files[0]);
+      reader.onload = function(e) {
+        contents = e.target.result;
+        // load header from csv
+        var arr = e.target.result.split("\n");
+        //console.log(arr);
+        const headers = arr[0].split(",");
+        var select = document.getElementById('select_list');
+        for (var i = 0; i <= headers.length; i++) {
+          var opt = document.createElement('option');
+          opt.value = headers[i];
+          opt.innerHTML = headers[i];
+          select.appendChild(opt);
+        }
+        //
+        data = d3.csv.parse(contents);
+        //console.log("this is the full data", data);
+        var select2 = document.getElementById('select_row');
+        // console.log("Data", data);
+        parallelCoordinates(data, false);
+        // remove button, since re-initializing doesn't work for now
+        uploader.parentNode.removeChild(uploader);
+      };
+      uploader.addEventListener("change", handleFiles, false);
+      var highlight = function(d) {
+        selected_loc = d.Location
+        // first every group turns grey
+        d3.selectAll(".line").transition().duration(200).style("stroke", "lightgrey").style("opacity", "0.2")
+        // Second the hovered specie takes its color
+        d3.selectAll("." + selected_loc).transition().duration(200).style("stroke", color(selected_loc)).style("opacity", "0.2")
+      }
+      // Unhighlight
+      var doNotHighlight = function(d) {
+        d3.selectAll(".line").transition().duration(200).delay(1000).style("stroke", function(d) {
+          return (color(d.Location))
+        }).style("opacity", "1")
+      }
+
+      function handleFiles() {
+        var file = this.files[0];
+        reader.readAsText(file);
+      };
+      //This function is to rescale the each axis. We can rescale one axis at a time. Find the lowe and upper range of selected axis, then filter according to the selection
+      function keep_selected_data(d) {
+        lower_range = exte[0][0];
+        upper_range = exte[0][1];
+        parallelCoordinates([], false)
+        data = d3.csv.parse(contents);
+        dataToFilter = data;
+        selected = activ;
+        dataToFilter = dataToFilter.filter(d => d[selected] >= lower_range),
+          dataToFilter = dataToFilter.filter(d => d[selected] <= upper_range)
+        parallelCoordinates(dataToFilter, true);
+        parcoords.updateAxes();
+        if (clicked_country) {
+          document.getElementById("reset").style.display = "block";
+          const country_filtered = dataToFilter.filter(d => d.Country === clicked_country) || [];
+          //for arranging the Month axis value on right side
+          const innerLabel = this.innerHTML;
+          parallelCoordinates(country_filtered, true);
+          document.getElementById("reset").style.display = "block";
+          document.getElementById("reset").addEventListener("click", resetSelectedCountryAlphabet)
+          allTicks = document.querySelectorAll(".tick text");
+          for (var i = 0, max = allTicks.length; i < max; i++) {
+            allTicks[i].addEventListener("click", keep_selected_data);
+          }
+          clicked_country = innerLabel;
+          parcoords.updateAxes();
+        }
+        // filterdFlag = true;
+        if (filterdFlag = true) {
+          allTicks = document.querySelectorAll(".tick text");
+          for (var i = 0, max = allTicks.length; i < max; i++) {
+            allTicks[i].addEventListener("click", onClickTick);
+          }
+          window.confirm("Please choose one filter to rescale");
+          txt = "You tried rescaling two axis, Upload the file Again!";
+          document.getElementById("demo").innerHTML = txt;
+          parcoords.updateAxes();
+          reset_axis();
+        }
+        console.log(document.getElementById("reset"));
+        document.getElementById("reset").style.display = "block";
+        parcoords.updateAxes();
+      }
+    </script>
+</body>
